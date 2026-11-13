@@ -15,7 +15,7 @@ const pool = mysql.createPool({
 });
 
 // Lista blanca de números autorizados
-const rawAuthorized = process.env.AUTHORIZED_NUMBERS || '5216861190948,526861190948,5216861824675,526861824675,5216864004238,526864004238';
+const rawAuthorized = process.env.AUTHORIZED_NUMBERS || '5216861190948,526861190948,5216861824675,526861824675,5216864004238,526864004238,169987020996624';
 const AUTHORIZED_NUMBERS = rawAuthorized
   .split(',')
   .map(n => n.trim().replace(/\D/g, ''))
