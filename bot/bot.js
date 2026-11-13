@@ -83,19 +83,22 @@ function parseExchangeRateMessage(text) {
   return null;
 }
 
-// Escuchar mensajes entrantes
-client.on('message', async (msg) => {
+// Escuchar mensajes entrantes (tanto recibidos como enviados por uno mismo)
+async function handleIncomingMessage(msg) {
   try {
-    // Obtener número del remitente
-    const sender = (msg.from || '').replace(/\D/g, '');
-    
-    // Validar si el remitente está autorizado
+    // Obtener número del remitente (o del chat si es mensaje propio)
+    const rawSender = msg.from || msg.to || '';
+    const sender = rawSender.replace(/\D/g, '');
+    const body = msg.body || '';
+
+    console.log(`📩 Mensaje detectado de [${rawSender}] (limpio: ${sender}): "${body}"`);
+
+    // Validar si el remitente o destinatario está autorizado
     const isAuthorized = AUTHORIZED_NUMBERS.some(authNum => sender.includes(authNum) || authNum.includes(sender));
     if (!isAuthorized) {
-      return; // Ignorar silenciosamente a extraños
+      console.log(`⛔ Número [${sender}] NO está en la lista blanca.`);
+      return;
     }
-
-    const body = msg.body || '';
 
     // Si el usuario pide el estado actual
     if (/^(sol|delsol|precio|tasa|tipo de cambio)$/i.test(body.trim())) {
@@ -123,7 +126,8 @@ client.on('message', async (msg) => {
     // Intentar parsear el comando de cambio
     const parsed = parseExchangeRateMessage(body);
     if (!parsed) {
-      return; // No es un mensaje de cambio
+      console.log(`ℹ️ Mensaje no coincide con formato de compra/venta.`);
+      return;
     }
 
     const { buy, sell } = parsed;
@@ -169,6 +173,14 @@ client.on('message', async (msg) => {
     try {
       await msg.reply('❌ Ocurrió un error interno al intentar guardar el tipo de cambio.');
     } catch (_) {}
+  }
+}
+
+client.on('message', handleIncomingMessage);
+client.on('message_create', (msg) => {
+  // message_create detecta también cuando te auto-envías mensajes a ti mismo
+  if (msg.fromMe) {
+    handleIncomingMessage(msg);
   }
 });
 
