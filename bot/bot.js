@@ -86,17 +86,28 @@ function parseExchangeRateMessage(text) {
 // Escuchar mensajes entrantes (tanto recibidos como enviados por uno mismo)
 async function handleIncomingMessage(msg) {
   try {
-    // Obtener número del remitente (o del chat si es mensaje propio)
+    // Resolver el número real del contacto (incluso si WhatsApp usa LID)
+    let realNumber = '';
+    try {
+      const contact = await msg.getContact();
+      realNumber = (contact?.number || '').replace(/\D/g, '');
+    } catch (_) {}
+
     const rawSender = msg.from || msg.to || '';
-    const sender = rawSender.replace(/\D/g, '');
+    const cleanRaw = rawSender.replace(/\D/g, '');
     const body = msg.body || '';
 
-    console.log(`📩 Mensaje detectado de [${rawSender}] (limpio: ${sender}): "${body}"`);
+    console.log(`📩 Mensaje de [${rawSender}] | Número resuelto: [${realNumber}] | Limpio: [${cleanRaw}]: "${body}"`);
 
-    // Validar si el remitente o destinatario está autorizado
-    const isAuthorized = AUTHORIZED_NUMBERS.some(authNum => sender.includes(authNum) || authNum.includes(sender));
+    // Validar si el remitente coincide con algún número autorizado o LID
+    const isAuthorized = AUTHORIZED_NUMBERS.some(authNum => 
+      (realNumber && (realNumber.includes(authNum) || authNum.includes(realNumber))) ||
+      (cleanRaw && (cleanRaw.includes(authNum) || authNum.includes(cleanRaw))) ||
+      (rawSender && rawSender.includes(authNum))
+    );
+
     if (!isAuthorized) {
-      console.log(`⛔ Número [${sender}] NO está en la lista blanca.`);
+      console.log(`⛔ Contacto [${realNumber || cleanRaw}] NO está en la lista blanca.`);
       return;
     }
 
